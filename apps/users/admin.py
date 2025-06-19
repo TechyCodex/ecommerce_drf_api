@@ -1,10 +1,8 @@
-# users/admin.py
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Address, CustomerUser, AdminUser
+from .models import Cart, CartItem, CustomUser, Address, CustomerUser, AdminUser
 
-# Base admin for shared fields
+# 🧠 Common user admin base
 class CustomUserBaseAdmin(UserAdmin):
     list_display = ('username', 'email', 'user_type', 'is_verified')
     search_fields = ('email', 'username')
@@ -19,25 +17,23 @@ class CustomUserBaseAdmin(UserAdmin):
         }),
     )
 
-# ✅ Register proxy: Customers only
+# ✅ Customer admin
 @admin.register(CustomerUser)
 class CustomerUserAdmin(CustomUserBaseAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).filter(user_type='customer').exclude(is_superuser=True)
 
-
-# ✅ Register proxy: Admin users only
+# ✅ Admin user admin
 @admin.register(AdminUser)
 class AdminUserAdmin(CustomUserBaseAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).filter(user_type='admin').exclude(is_superuser=True)
 
     def save_model(self, request, obj, form, change):
-        # Ensure user_type is set to 'admin'
         obj.user_type = 'admin'
         super().save_model(request, obj, form, change)
 
-# ✅ Register Address normally
+# ✅ Address admin
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
     list_display = (
@@ -45,3 +41,20 @@ class AddressAdmin(admin.ModelAdmin):
         'state', 'postal_code', 'country', 'is_default'
     )
     search_fields = ('address_line1', 'city', 'state', 'postal_code', 'country', 'user__email')
+
+# ✅ Cart admin
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = ('user', 'created_at')
+    search_fields = ('user__email',)
+
+# ✅ Cart Item admin
+@admin.register(CartItem)
+class CartItemAdmin(admin.ModelAdmin):
+    list_display = ('cart', 'product', 'quantity')
+    search_fields = ('product__name',)
+
+# ✅ Panel branding
+admin.site.index_title = "TechyCart Admin"
+admin.site.site_header = "TechyCart Admin Panel"
+admin.site.site_title = "TechyCart"
