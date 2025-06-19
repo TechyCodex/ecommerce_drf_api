@@ -13,10 +13,13 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import (
     AddressSerializer,
     ProfileImageUploadSerializer,
-    UserRegisterSerializer
+    UserRegisterSerializer,
+    CartItemSerializer,
+    CartSerializer
 )
 from utils.email_functions import send_verification_email
-from .models import Address
+from .models import Address,Cart,CartItem
+from products.models import Product
 
 import threading
 import uuid
@@ -169,3 +172,49 @@ def upload_profile_image(request):
 
         return Response({'profile_picture_url': full_url}, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+@api_view(['POST'])
+def add_to_cart(request):
+    cart_code = request.data.get('cart_code')
+    product_id = request.data.get('product_id')
+
+    cart, _ = Cart.objects.get_or_create(cart_code=cart_code)
+    product = Product.objects.get(id=product_id)
+
+    cartitem, created = CartItem.objects.get_or_create(cart=cart, product=product)
+    if created:
+        cartitem.quantity = 1  # Set to 1 if new cart item
+    else:
+        cartitem.quantity += 1  # Increment if already exists
+    cartitem.save()
+
+    serializer = CartSerializer(cart)
+    return Response({"data":serializer.data, "message": "Cart item added successfully"})
+
+# This view handles PUT requests to update the quantity of a cart item
+@api_view(['PUT'])
+def update_cart_item(request):
+    Cartitem_id = request.data.get('item_id')
+    quantity = request.data.get('quantity')
+    
+    quantity = int(quantity)
+    
+    Cartitem = CartItem.objects.get(id=Cartitem_id)
+    Cartitem.quantity = quantity
+    Cartitem.save()
+    
+    serializer = CartItemSerializer(Cartitem)
+    return Response({"data":serializer.data, "message": "Cart item updated successfully"})
+
+
+
+
+@api_view(['DELETE'])
+def delete_cartitem(request,pk):
+    review = CartItem.objects.get(id=pk)
+    review.delete()
+    
+    return Response('CartItem deleted Successfully',status=200)

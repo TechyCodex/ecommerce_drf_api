@@ -10,5 +10,7 @@ urlpatterns = [
     path('reset-password/', views.reset_password_form, name='reset-password-form'),
     path('reset-password/submit/', views.reset_password_submit, name='reset-password-submit'),
     path('upload-profile-image/', views.upload_profile_image, name='upload-profile-image'),
+    path('add_to_cart/', views.add_to_cart, name='add_to_cart'),
+    path('update_cartitem_quantity/', views.update_cart_item, name='update_cartitem_quantity'),
 
 ]
