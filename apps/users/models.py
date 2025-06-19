@@ -1,6 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from products.models import Product
+
+
 
 class CustomUser(AbstractUser):
     USER_TYPE_CHOICES = (
@@ -49,3 +52,20 @@ class AdminUser(CustomUser):
         proxy = True
         verbose_name = 'Admin User'
         verbose_name_plural = 'Admin Users'
+        
+
+class Cart(models.Model):
+    cart_code = models.CharField(max_length=11, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    
+    def __str__(self):
+        return self.cart_code
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, related_name='cartitems', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, related_name='item', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+            
