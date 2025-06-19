@@ -19,7 +19,7 @@ from .serializers import (
 )
 from utils.email_functions import send_verification_email
 from .models import Address,Cart,CartItem
-from products.models import Product
+from apps.products.models import Product
 
 import threading
 import uuid
