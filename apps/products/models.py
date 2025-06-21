@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
-
+from django.conf import settings
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
@@ -41,4 +41,38 @@ class Product(models.Model):
                 counter += 1
             self.slug = unique_slug
         super().save(*args, **kwargs)
-        
+
+
+
+class Review(models.Model):
+    
+    RATING_CHOICES = [
+        (1, '1 - Poor'),
+        (2, '2 - Fair'),
+        (3, '3 - Good'),
+        (4, '4 - Very Good'),
+        (5, '5 - Excellent'),
+    ]
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveIntegerField(choices=RATING_CHOICES, default=5)
+    review = models.TextField(blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Review by {self.user.username} on {self.product.name}"
+    
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-created']
+    
+    
+class ProductRating(models.Model):
+    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='rating')
+    average_rating = models.FloatField(default=0.00)    
+    total_reviews = models.PositiveIntegerField(default=0)
+    def __str__(self):
+        return f"{self.product.name} - {self.average_rating} Total Reviews: {self.total_reviews}"
+    
+            

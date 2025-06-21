@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view,permission_classes
-from .models import Product,Category
-from .serializers import ProductDetailSerializer,ProductListSerializer,CategoryDetailSerializer,CategoryListSerializer
+
+from apps.users.views import User
+from .models import Product,Category, Review
+from .serializers import ProductDetailSerializer,ProductListSerializer,CategoryDetailSerializer,CategoryListSerializer, ReviewSerializer
 
 # Create your views here.
 ## These views handle API requests for products and categories, returning serialized data.
@@ -42,4 +44,54 @@ def category_detail(request, slug):
         return Response(serializer.data)  # Returning serialized category data as a response
     except Category.DoesNotExist:   # Handling case where category does not exist
         return Response({'error': 'Category not found'}, status=404)
+
+
+
+# This view handles POST requests to add a review for a product
+@api_view(['POST'])
+def add_review(request):
+    
+    product_id = request.data.get('product_id')
+    email = request.data.get('email')
+    rating = request.data.get('rating')
+   
+    review_text = request.data.get('review')
+    
+    product = Product.objects.get(id=product_id)
+    user = User.objects.get(email=email)
+    
+    if Review.objects.filter(product=product,user=user).exists():
+        return Response('You already dropped a review for this product',status=400)
+    
+    review = Review.objects.create(
+        product=product,
+        user=user,
+        rating=rating,
+        review=review_text
+    )
+    serializer = ReviewSerializer(review)
+    return Response({"data": serializer.data, "message": "Review added successfully"})
+
+@api_view(['PUT'])
+def update_review(request,pk):
+    review = Review.objects.get(id=pk)
+    rating = request.data.get('rating')
+    review_text = request.data.get('review')
+    
+    review.rating = rating
+    review.review = review_text
+    review.save()
+    
+    serializer = ReviewSerializer(review)
+    return Response({"data": serializer.data, "message": "Review updated successfully"})
+
+
+
+@api_view(['DELETE'])
+def delete_review(request,pk):
+    review = Review.objects.get(id=pk)
+    review.delete()
+    
+    return Response('Review deleted Successfully',status=200)
+
    
