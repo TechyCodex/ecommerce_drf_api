@@ -51,6 +51,8 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+    
+    
 class ProfileImageUploadSerializer(serializers.Serializer):
     image = serializers.ImageField()
     

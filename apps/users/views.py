@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from utils.notification import send_firebase_notification_v1
 from .serializers import (
     AddressSerializer,
     ProfileImageUploadSerializer,
@@ -18,7 +18,7 @@ from .serializers import (
     CartSerializer
 )
 from utils.email_functions import send_verification_email
-from .models import Address,Cart,CartItem
+from .models import Address,Cart,CartItem, CustomUser
 from apps.products.models import Product
 
 import threading
@@ -49,21 +49,45 @@ def register(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ✅ Login API
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from .serializers import UserRegisterSerializer
+
 @api_view(['POST'])
 def login(request):
     email = request.data.get('email')
     password = request.data.get('password')
+
+    # ✅ Input validation
+    if not email or not password:
+        return Response(
+            {'error': 'Email and password are required.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ✅ Authenticate user
     user = authenticate(request, email=email, password=password)
-    if user:
+
+    if user is not None:
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
+
+        # Optional: If you have `token` field in user model
         user.token = access_token
         user.save()
+
         return Response({
             'data': UserRegisterSerializer(user).data,
             'token': access_token
         })
-    return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    return Response(
+        {'error': 'Invalid credentials. Please check your email and password.'},
+        status=status.HTTP_401_UNAUTHORIZED
+    )
 
 # ✅ Email Verification API
 @api_view(['GET'])
@@ -159,7 +183,7 @@ def upload_profile_image(request):
         folder_path = os.path.join(settings.MEDIA_ROOT, 'profile_pics')
         os.makedirs(folder_path, exist_ok=True)
         filename = f"{user.id}_{image.name}"
-        image_path = os.path.join(folder_path, filename)
+        image_path = os.path.join(folder_path, filename) 
 
         with open(image_path, 'wb+') as destination:
             for chunk in image.chunks():
@@ -177,44 +201,98 @@ def upload_profile_image(request):
 
 
 @api_view(['POST'])
+
 def add_to_cart(request):
-    cart_code = request.data.get('cart_code')
     product_id = request.data.get('product_id')
 
-    cart, _ = Cart.objects.get_or_create(cart_code=cart_code)
-    product = Product.objects.get(id=product_id)
+    if not product_id:
+        return Response({'error': 'Product ID is required'}, status=400)
+
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response({'error': 'Product does not exist'}, status=404)
+
+    # Get or create cart by user
+    cart, _ = Cart.objects.get_or_create(user=request.user)
 
     cartitem, created = CartItem.objects.get_or_create(cart=cart, product=product)
-    if created:
-        cartitem.quantity = 1  # Set to 1 if new cart item
-    else:
-        cartitem.quantity += 1  # Increment if already exists
+    if not created:
+        cartitem.quantity += 1
     cartitem.save()
 
     serializer = CartSerializer(cart)
-    return Response({"data":serializer.data, "message": "Cart item added successfully"})
+    return Response({"data": serializer.data, "message": "Cart item added successfully"})
+
 
 # This view handles PUT requests to update the quantity of a cart item
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def update_cart_item(request):
-    Cartitem_id = request.data.get('item_id')
+    item_id = request.data.get('item_id')
     quantity = request.data.get('quantity')
-    
-    quantity = int(quantity)
-    
-    Cartitem = CartItem.objects.get(id=Cartitem_id)
-    Cartitem.quantity = quantity
-    Cartitem.save()
-    
-    serializer = CartItemSerializer(Cartitem)
-    return Response({"data":serializer.data, "message": "Cart item updated successfully"})
 
+    if not item_id or quantity is None:
+        return Response({'error': 'Item ID and quantity are required'}, status=400)
 
+    try:
+        quantity = int(quantity)
+        if quantity < 1:
+            return Response({'error': 'Quantity must be at least 1'}, status=400)
+    except ValueError:
+        return Response({'error': 'Quantity must be a valid integer'}, status=400)
+
+    try:
+        cart_item = CartItem.objects.get(id=item_id, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return Response({'error': 'Cart item not found'}, status=404)
+
+    cart_item.quantity = quantity
+    cart_item.save()
+
+    serializer = CartItemSerializer(cart_item)
+    return Response({"data": serializer.data, "message": "Cart item updated successfully"})
 
 
 @api_view(['DELETE'])
-def delete_cartitem(request,pk):
-    review = CartItem.objects.get(id=pk)
-    review.delete()
-    
-    return Response('CartItem deleted Successfully',status=200)
+@permission_classes([IsAuthenticated])
+def delete_cartitem(request, pk):
+    try:
+        cart_item = CartItem.objects.get(id=pk, cart__user=request.user)
+    except CartItem.DoesNotExist:
+        return Response({'error': 'Cart item not found'}, status=404)
+
+    cart_item.delete()
+    return Response({'message': 'Cart item deleted successfully'}, status=200)
+
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_cart(request):
+    try:
+        cart = Cart.objects.get(user=request.user)
+    except Cart.DoesNotExist:
+        return Response({"message": "Cart is empty", "data": []}, status=200)
+
+    serializer = CartSerializer(cart)
+    return Response({"data": serializer.data, "message": "Cart fetched successfully"})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_notification_to_user(request):
+    user_id = request.data.get('user_id')
+    title = request.data.get('title')
+    body = request.data.get('body')
+
+    try:
+        user = User.objects.get(id=user_id)
+        if user.fc_token:
+            result = send_firebase_notification_v1(user.fc_token, title, body)
+            return Response({'success': True, 'message_id': result})
+        else:
+            return Response({'error': 'User does not have an FCM token'}, status=400)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
