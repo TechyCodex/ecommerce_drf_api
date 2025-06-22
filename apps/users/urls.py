@@ -10,10 +10,11 @@ urlpatterns = [
     path('reset-password/', views.reset_password_form, name='reset-password-form'),
     path('reset-password/submit/', views.reset_password_submit, name='reset-password-submit'),
     path('upload-profile-image/', views.upload_profile_image, name='upload-profile-image'),
-     path('add_to_cart/', views.add_to_cart, name='add_to_cart'),
+    path('add_to_cart/', views.add_to_cart, name='add_to_cart'),
     path('update_cartitem_quantity/', views.update_cart_item, name='update_cartitem_quantity'),
     path('delete_cartitem/<int:pk>/', views.delete_cartitem, name='delete_cartitem'),
     path('my_cart/', views.get_my_cart, name='my_cart'),
     path('send-notification/', views.send_notification_to_user, name='send-notification'),
+    
 
 ]
