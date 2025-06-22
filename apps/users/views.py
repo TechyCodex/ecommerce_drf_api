@@ -296,3 +296,4 @@ def send_notification_to_user(request):
             return Response({'error': 'User does not have an FCM token'}, status=400)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=404)
+    
