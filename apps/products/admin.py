@@ -3,6 +3,8 @@ from .models import Product,Category, ProductRating, Review
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'featured',)
+    list_editable = ('featured',)  # You can edit directly from the list
+    list_filter = ('featured',)    # Filter products by featured status
     
 admin.site.register(Product,ProductAdmin)
 
