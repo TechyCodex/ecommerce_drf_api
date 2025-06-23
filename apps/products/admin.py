@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product,Category, ProductRating, Review
+from .models import FeaturedProduct, Product,Category, ProductRating, Review
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'featured',)
@@ -16,3 +16,15 @@ admin.site.register(Category, CategoryAdmin)
 
 
 admin.site.register([ Review, ProductRating]) 
+
+
+class FeaturedProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price', 'featured')
+    list_editable = ('featured',)
+    list_filter = ('featured',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(featured=True)
+
+admin.site.register(FeaturedProduct, FeaturedProductAdmin)

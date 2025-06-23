@@ -81,8 +81,3 @@ class FeaturedProduct(Product):
         proxy = True
         verbose_name = 'Featured Product'
         verbose_name_plural = 'Featured Products'
-
-    def save(self, *args, **kwargs):
-        self.featured = True  # Automatically set as featured
-        super().save(*args, **kwargs)
-            
