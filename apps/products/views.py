@@ -94,4 +94,11 @@ def delete_review(request,pk):
     
     return Response('Review deleted Successfully',status=200)
 
+
+
+@api_view(['GET'])
+def featured_products(request):
+    products = Product.objects.filter(featured=True)
+    serializer = ProductListSerializer(products, many=True)
+    return Response(serializer.data)
    
