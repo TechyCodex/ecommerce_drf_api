@@ -10,6 +10,17 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.parsers import MultiPartParser, FormParser
 from utils.notification import send_firebase_notification_v1
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from .serializers import UserRegisterSerializer
+
+
+
 from .serializers import (
     AddressSerializer,
     ProfileImageUploadSerializer,
@@ -18,7 +29,7 @@ from .serializers import (
     CartSerializer
 )
 from utils.email_functions import send_verification_email
-from .models import Address,Cart,CartItem, CustomUser
+from .models import Address,Cart,CartItem
 from apps.products.models import Product
 
 import threading
@@ -38,7 +49,7 @@ def register(request):
         user.is_verified = False
         user.save()
 
-        verification_link = f"http://192.168.31.176:8080/api/users/verify-email/?token={verification_token}"
+        verification_link = request.build_absolute_uri(f"/api/users/verify-email/?token={verification_token}")
 
         threading.Thread(
             target=send_verification_email,
@@ -49,12 +60,6 @@ def register(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ✅ Login API
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from .serializers import UserRegisterSerializer
 
 @api_view(['POST'])
 def login(request):
@@ -136,7 +141,8 @@ def request_password_reset(request):
         user.verification_token = token
         user.save()
 
-        reset_link = f"http://192.168.31.176:8080/api/users/reset-password/?token={token}"
+        reset_link = request.build_absolute_uri(f"/api/users/reset-password/?token={token}")
+
         subject = "Reset Your TechyCart Password"
         message = f"Hi {user.username},\n\nClick below to reset your password:\n{reset_link}"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
