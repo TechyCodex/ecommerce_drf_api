@@ -29,7 +29,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '192.168.31.176',  # <-- Apna local IP yahan add karein
-    '172.20.10.2'
+    '172.20.10.2',
+    'ecommerce-drf-api-1.onrender.com'  # 👈 Add your Render domain here
 ]
 
 
